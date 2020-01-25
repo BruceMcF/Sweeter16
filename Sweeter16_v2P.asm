@@ -145,17 +145,10 @@ GETSTATE:
 	PLP
 	RTS
 
-CALL:	; Pointer to 65C02 machine code is
-	; in R11. Branch via OP to support
-	; embedded data
-	JSR +
-	BRA BR
-+	JMP (CALLV)
-
-; These next Branch four ops inherit their branch 
+; These five Branch ops inherit their branch 
 ; to NEXTOP from the branch op that they jump into
 ; putting them here allows BRANCH to be close enough
-; to NEXTOP for the BEQ BRANCH to work.
+; to NEXTOP for NEXTOP's BEQ BRANCH to work.
 
 ; BM1 and BNM1 uses the BZ and BNZ logic
 ; compared to #$FF rather than #0
@@ -169,6 +162,17 @@ BNM1	ASL
 	LDA #$FF
 	BRA BNAX
 
+; Call ends by branching to step over any embedded
+; data for the use of the called routine
+
+CALL:	; Pointer to 65C02 machine code is
+	; in R11. Branch via OP to support
+	; embedded data
+	JSR +
+	BRA BR
++	JMP (CALLV)
+
+
 ; Adjust Stack and R0 uses same offset logic
 ; As Branch, just different registers
 
@@ -179,7 +183,7 @@ ADJS:	LDX #(STACK-REG)
 	BRA OFFSET
 
 BRANCH:
-	LDA (IP)
+	TYA			;Only here if Y=$0x
 	ASL			;A is actually the OP index
 	TAX			
 	INC IP		;Now increment IP, since
@@ -266,18 +270,43 @@ NEXTOP:
 	INC IP+1
 NEXTOP1:
 +	LDA (IP)		; if([(++IP)]&&F0h)
+	TAY
 	AND #$F0
 	BEQ BRANCH
 	LSR
 	LSR
 	LSR
 	TAX
-	LDA (IP)
+	TYA
 	AND #$0F		; *2 = Reg if OP, BROP if BROP
 	ASL
 	STA STATUS		; This is the register index operand
 				; Carry clear for each main OP
 	JMP (OPS-2,X)	; Minimum X=2, since X=0 => BRANCH
+
+; These two don't have any ops branching into
+; them to share their finishing semantics.
+
+POPI:
+	TAX
+	LDA REG,X		; LD R0,(--Rn)
+	BNE +
+	DEC REG+1,X
++	DEC REG,X
+	LDA (REG,X)
+	STA REG
+	STZ REG+1
+	BRA NEXTOP
+
+DCR:	
+	TAX			; Rn<-Rn-1
+	LDA REG,X
+	BNE +
+	DEC REG+1,X
++	BRA NEXTOP	
+
+; These four have operations branching in to
+; share their finishing semantics
 
 ADD:	STZ STATUS
 	TAX			; ADD R0,Rn
@@ -298,13 +327,6 @@ LD1:	LDA REG,Y		; LD R0,Rn
 	LDA REG+1,Y
 	STA REG+1,X
 	BRA NEXTOP
-
-DCR:	
-	TAX			; Rn<-Rn-1
-	LDA REG,X
-	BNE +
-	DEC REG+1,X
-+	BRA NEXTOP		; For DCR function
 
 STPI:				; LD (--Rn),R0
 	TAX
@@ -331,16 +353,18 @@ INRX:
 	BNE +
 	INC REG+1,X
 +	BRA NEXTOP
+
+
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ; ~~ * NEXTOP must be no more than ~~~
 ; ~~ 127 bytes from here ~~~~~~~~~~~~~
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-; ~~ These piggbyback their branch ~~~
-; ~~ back from the routines they ~~~~~
-; ~~ borrow their finish from. ~~~~~~~
-; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+; ~~ These must be within 127 of the op they ~~
+; ~~ piggbyback their finish from, can be ~~~~~
+; ~~ further than 127 from NEXTOP ~~~~~~~~~~~~~
+; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SUB:	LDX #0		; SUB R0,Rn
 CPR:	TAY			; CPR opcode = R13 index
@@ -367,23 +391,16 @@ POPDI:			; LDD R0,(--Rn)
 	DEC REG+1,X
 +	DEC REG,X
 	LDA (REG,X)
-	TAY
+	PHA
 	LDA REG,X
 	BNE +
 	DEC REG+1,X
 +	DEC REG,X
 	LDA (REG,X)
 	STA REG
-	STY REG+1
+	PLA
+	STA REG+1
 	BRA STPI1		; Share STP @Rn exit
-
-POPI:
-	TAX
-	LDA REG,X		; LD R0,(--Rn)
-	BNE +
-	DEC REG+1,X
-+	DEC REG,X
-	BRA LDI1
 
 STI:		; 
 	TAX
