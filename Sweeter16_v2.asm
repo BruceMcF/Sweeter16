@@ -362,16 +362,28 @@ INRX:
 	BNE +
 	INC REG+1,X
 +	BRA NEXTOP
+
+POPI:
+	TAX
+	LDA REG,X		; LD R0,(--Rn)
+	BNE +
+	DEC REG+1,X
++	DEC REG,X
+	LDA (REG,X)
+	STA REG
+	STZ REG+1
+	BRA NEXTOP
+
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ; ~~ * NEXTOP must be no more than ~~~
 ; ~~ 127 bytes from here ~~~~~~~~~~~~~
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-; ~~ These piggbyback their branch ~~~
-; ~~ back from the routines they ~~~~~
-; ~~ borrow their finish from. ~~~~~~~
-; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+; ~~ These must be within 127 of the op they ~~
+; ~~ piggbyback their finish from, can be ~~~~~
+; ~~ further than 127 from NEXTOP ~~~~~~~~~~~~~
+; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SUB:	LDX #0		; SUB R0,Rn
 CPR:	TAY			; CPR opcode = R13 index
@@ -408,14 +420,6 @@ POPDI:			; LDD R0,(--Rn)
 	PLA
 	STA REG+1
 	BRA STPI1		; Share STP @Rn exit
-
-POPI:
-	TAX
-	LDA REG,X		; LD R0,(--Rn)
-	BNE +
-	DEC REG+1,X
-+	DEC REG,X
-	BRA LDI1
 
 STI:		; 
 	TAX
