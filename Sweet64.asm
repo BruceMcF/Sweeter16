@@ -61,7 +61,7 @@ IP		= $20		; R15
 ; registers storage locations are locked to the four
 ; bytes after the R register.
 
-REGA	= REG+2
+REGA	= IP+2
 REGX = REGA+1
 REGY = REGX+1
 REGP = REGY+1
@@ -73,17 +73,17 @@ VOP = VBR+2
 		; This would be a VICE emulation of a 65C816
 		; equipped C64 in 65C02 emulation mode.
 
-SWEETER16:
+SWEET64:
 	JSR PUTSTATE
 	PLA
 	STA IP		;(IP) uses 6502 Return Address
 	PLA 			;6502 RtnAdd = Actual-1
 	STA IP+1
+	LDA #(>SWEET64)
 	STA VBR+1
+	LDA #(>SWEET64)+1
 	STA VOP+1
-	INC VOP
 	JMP NEXTOP
-
 
 BROPS:
 	; I use Wozniak's pseudo-ops
@@ -162,14 +162,10 @@ CALL:	; Pointer to 65C02 machine code is
 
 ; BM1 and BNM1 uses the BZ and BNZ logic
 ; compared to #$FF rather than #0
-BM1	ASL
-	TAX
-	LDA #$FF
+BM1	LDA #$FF
 	BNE BAX
 
-BNM1	ASL
-	TAX
-	LDA #$FF
+BNM1	LDA #$FF
 	BNE BNAX
 
 ; Adjust Stack and R0 uses same offset logic
@@ -179,7 +175,7 @@ ADJ0:	LDX #0
 	BEQ OFFSET
 
 ADJS:	LDX #(STACK-REG)
-	JMP OFFSET
+	BNE OFFSET
 
 BRANCH:
 	TAX
@@ -262,9 +258,10 @@ NEXTOP:
 NEXTOP1:
 +	LDY #0
 	LDA (IP),Y		; if([(++IP)]&&F0h)
+	BMI +
 	CMP #$10
 	BMI BRANCH
-	LSR
++	LSR
 	LSR
 	LSR
 	LSR
@@ -442,6 +439,8 @@ SET:				; LDD Rn,#OP1:OP2
 	INC IP+1
 +	JMP NEXTOP1
 
-!source "sweeter16_code.asm"
+SWEETVM = SWEET64
+
+!source "sweet16vm_code.asm"
 !eof
 :
