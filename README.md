@@ -1,5 +1,5 @@
 # Sweeter16
-A New implementation of Steve Wozniak's Sweet16 Virtual Machine for the 65C02/65C816.
+A New, Open-Source implementation of Steve Wozniak's Sweet16 Virtual Machine for the 65C02/65C816.
 
 "Sweet16" is Steve Wozniak's compact virtual machine for concisely handling 16bit data on the 6502 processor. It is embedded in 6502 code by making a call to the Sweet16 subroutine and then executing the following embedded Sweet16 code. When the Sweet16 RTN instruction is executed, execution returns to the following 6502 code.
 
