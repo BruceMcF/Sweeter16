@@ -11,7 +11,7 @@ In Sweet16, 16 2-byte locations in  Zero Page space are treated as two byte regi
 + SET Rn, word is an immediate load to a register of the following two bytes, in standard 6502 low byte first order
 + ADD Rn and SUB Rn are two's complement add and subtract. SUB Rn has an inverted carry, like the 6502. Both set a carry in the  status register.
 + ICR Rn and DCR Rn increment or decrement the register by one.
-+ CMP Rn is a two's complement subtract which stores the result, and sets the result register status, to register 13.
++ CMP Rn is a two's complement subtract with 6502 inverted carry, which stores the result, and sets the result register status, to register 13.
 + LD Rn and ST Rn are 16bit load and store between accumulator and the target register.
 + LD @Rn and ST @Rn are 8bit post-increment load from and store to the address pointed to by the register
 + LDD @Rn and STD @Rn are 16bit post-increment load from and store to the address pointed to by the register
