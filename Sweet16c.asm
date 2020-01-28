@@ -53,7 +53,7 @@
 REG		= $2		; R0
 CALLV		= REG+22	; R11
 STACK		= REG+24	; R12
-STATUS	= REG+29	; HIGH Byte of R14
+STATUS	= REG+28	; LOW Byte of R14
 IP		= REG+30	; R15
 
 REGA	= IP+2
@@ -315,7 +315,8 @@ ADD:	STZ STATUS
 	LDA REG+1
 	ADC REG+1,X
 	STA REG+1
-ADD1:	ROL STATUS
+ADD1:	BCC NEXTOP
+	INC STATUS
 	BRA NEXTOP
 
 LD:	TAY
@@ -383,9 +384,7 @@ POPI:
 
 SUB:	LDX #0		; SUB R0,Rn
 CPR:	TAY			; CPR opcode = R13 index
-	TXA
-	LSR
-	STA STATUS		; Carry will be shifted in
+	STX STATUS		; Carry will be incremented in
 	SEC
 	LDA REG
 	SBC REG,Y
