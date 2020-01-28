@@ -16,5 +16,3 @@ To see the appeal of this approach, consider a generic VM written along the line
 By contrast, with the X indexed jump, having an index in X, the X-indexed JUMP is executed (+6), and then when the operation completes, it Branches or Jumps back to the parsing routine (+3), for on the order of 9 clocks.
 
 As a further optimization, one version of the Sweeter16 VM implements the parsing of one type of code using a page table. The processing speed improvement is modest compared to the gain in the main VM loop, so a two-page (<=512 bytes) version that does not use a page table is provided along with a three-page (<=768 byte) version that includes a page table.
-
-There are still bugs in the Sweet64.asm operations, but the VM code works.
