@@ -28,7 +28,7 @@ If the high four bits of the Sweet16 code is 0, then the lower four bits indicat
 + RS is a return from the subroutine
 + BK executes a 6502 machine language BRK instruction. What this does depends on how the BRK vector is set-up -- in the original setting in the early Apple II, it launched a Monitor.
 + RTN ends the Sweet16 virtual code and should be followed by 6502 code.
-+ CALL rel is the new operation that calls a 65c02 subroutine at the address in R11, then executes a branch to the target on return, allowing the call to be followed by embedded data accessed via "LDA(IP),Y".
++ CALL rel is the new operation that calls a 65c02 subroutine at the address in R10, then executes a branch to the target on return, allowing the call to be followed by embedded data accessed via "LDA(IP),Y".
 + ADJ0 rel is the new operation that adds the sign extended offset to the Accumultor register R0
 + ADJS rel is the new operation that adds the sign extended offset to the Stack register R12 
 
