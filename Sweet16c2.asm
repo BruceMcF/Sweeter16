@@ -245,7 +245,7 @@ BS:	LDA IP
 	INC STACK
 	BNE +
 	INC STACK+1
-	LDA IP+1
++	LDA IP+1
 	STA (STACK)
 	INC STACK
 	BNE BR
@@ -302,7 +302,8 @@ DCR:
 	LDA REG,X
 	BNE +
 	DEC REG+1,X
-+	BRA NEXTOP	
++	DEC REG,X
+	BRA NEXTOP	
 
 ; These four have operations branching in to
 ; share their finishing semantics

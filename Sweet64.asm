@@ -153,8 +153,8 @@ GETSTATE:
 	PLP
 	RTS
 
-CALL:	; Pointer to 65C02 machine code is
-	; in R11. Branch via OP to support
+CALL:	; Pointer to 6502 machine code is
+	; in R10. Branch via OP to support
 	; embedded data
 	JSR +
 	JMP BR
@@ -220,18 +220,18 @@ BM:	LDA REG+1,X	;Check sign
 BZ:	LDA #0
 BAX:
 	CMP REG,X		;Check zero
-	BNE NEXTOP
+	BNE NEXTOP		;Any bit set fails
 	CMP REG+1,X
-	BEQ BR
-	BNE NEXTOP
+	BEQ BR		;All bits clear, passes
+	BNE NEXTOP		;otherwise fail
 
 BNZ:	LDA #0
 BNAX:
 	CMP REG,X		;Check zero
-	BNE BR
+	BNE BR		;Any bit set passes
 	CMP REG+1,X
-	BEQ NEXTOP
-	BNE BR
+	BEQ NEXTOP		;All bits clear, fails
+	BNE BR		;otherwise pass
 
 BS:	LDY #0
 	LDA IP
@@ -258,6 +258,9 @@ OFFSET:
 	TYA
 	ADC  REG+1,X
 	STA  REG+1,X
+; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+; ~~~~~~~~~~~ MAIN EXECUTION BEGINS HERE ~~~~~~
+; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 NEXTOP:
 	INC IP
 	BNE  +		; ++IP
@@ -265,9 +268,9 @@ NEXTOP:
 NEXTOP1:
 +	LDY #0		; Note: Y=0 when JMP (VOP)
 	LDA (IP),Y		; if([(++IP)]&&F0h)
-	BMI +
+	BMI +			; Reg op if high bit set
 	CMP #$10
-	BMI BRANCH
+	BMI BRANCH		; Also if >=$10
 +	LSR
 	LSR
 	LSR
@@ -277,16 +280,16 @@ NEXTOP1:
 	STA VOP
 	LDA (IP),Y
 	AND #$0F
-	STA STATUS		; Note Status Register is Offset/2
-				; Carry is in High Bit
 	ASL
+	STA STATUS		; Note Status Register is 2*Rn, not Rn
+				; Carry is in Low Bit, starts clear
 	TAX
 	JMP (VOP)
 
 BK:	BRK
 
 RTN:	JSR GETSTATE
-	JMP  (IP)	;Go Back to 65C02 code
+	JMP  (IP)	;Go Back to 6502 code
 
 RS:				;Pop the IP from the stack
 	SEC
@@ -379,6 +382,11 @@ POPI:
 	STY REG+1
 	JMP NEXTOP
 
+; POPD R0 is pretty pointless, if you want
+; to rule it out, this can be shortened
+; by popping high byte then falling through
+; into POPI, which can STY REG+1 at the
+; outset if POP R0 is also ruled out.
 POPDI:			; LDD R0,(--Rn)
 	LDA REG,X
 	BNE +
