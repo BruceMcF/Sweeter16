@@ -279,9 +279,10 @@ BS:	LDA IP
 	INC STACK
 BR:	LDX #(IP-REG)	; Index to IP
 OFFSET:
-	LDA  (IP)		;Branch Offset
-	BIT #$0080		;Sign Extend?
-	BPL  +
+	LDA (IP)		;Branch Offset
+	AND #$00FF		;Byte value
+	BIT #$0080		;Byte sign bit
+	BEQ +			;Sign Extend?
 	ORA #$FF80		;Sign Extend!
 +	CLC
 	ADC  REG,X	  	;ADD TO IP
@@ -302,6 +303,10 @@ NEXTOP:
 
 DCR:	TAX			; --Rn
 	DEC REG,X
+	BRA NEXTOP
+
+INR:	TAX
+	INC REG,X
 	BRA NEXTOP
 
 ADD:	STZ STATUS
@@ -337,23 +342,22 @@ SET:
 	BRA NEXTOP
 
 LD:	TAX
-	LDY #0
-LD1:	+TinyA
 	LDA REG,X		; LD R0,Rn
-	STA REG,Y
-	STZ REG+1
-	+BigA
+	STA REG
 	BRA NEXTOP
 
-ST:	TAY
-	LDX #0
-	BRA LD1
+ST:	TAX
+	LDA REG
+	STA REG,X
+	BRA NEXTOP
 
 POPI:
 	TAX
 	DEC REG,X		; LD R0,(--Rn)
 	LDA (REG,X)
 	AND #$00FF
+	STA REG
+	STZ STATUS
 	BRA NEXTOP
 
 LDI:		; 
@@ -362,7 +366,6 @@ LDI:		;
 	AND #$00FF
 	STA REG
 	STZ STATUS 	; R0 is actual target
-INR:
 	INC  REG,X	; The Rn++ part
 	BRA NEXTOP
 
@@ -388,7 +391,6 @@ STDI:				; STD (Rn++),R0
 	TAX
 	LDA REG
 	STA (REG,X)
-	INC REG,X
 	INC REG,X
 	INC REG,X
 	JMP NEXTOP
