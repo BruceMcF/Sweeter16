@@ -23,6 +23,10 @@
 ; Domain Dedication along with this software. If not, see
 ; <http://creativecommons.org/publicdomain/zero/1.0/
 
+; NOTE that unlike the original Sweet16, the Status register
+; is the low byte of R14. This is to allow better cross 
+; compatibility between Sweet16C, Sweet64, and Sweet816.
+
 ; NOTE TWO INTENTIONAL EXTENSIONS.
 
 ; Since Sweet64 is not restricted to op codes residing in
@@ -33,9 +37,10 @@
 ; direct add of up to +127/-128.
 
 ; The third NUL op code is implemented as a CALL operation,
-; which uses the address pointed to by register 11 as 
-; the call vector. The operand is the offset for a branch
-; on returning from the routine. 
+; which uses the address pointed to by register 10 ($xA) as 
+; the cAll vector (it can't be register 12 ($xC), that's the
+; subroutine call stack address). The operand is the offset
+; for a branch on returning from the routine. 
 
 ; You may report all other discrepencies between the
 ; execution semantics of this Virtual Machine and Steve
@@ -51,10 +56,10 @@
 ; Version 0.0.1 Untested Code
 
 REG		= $2		; R0
-CALLV		= $18		; R11
-STACK		= $1A		; R12
-STATUS	= $1E		; LOW Byte of R14
-IP		= $20		; R15
+CALLV		= REG+20	; R10
+STACK		= REG+24	; R12
+STATUS	= REG+28	; LOW Byte of R14
+IP		= REG+30	; R15
 
 ; So that the CALL mechanism can use the SAVE/RESTORE
 ; subroutines within portable Sweeter16 code, the
@@ -185,9 +190,11 @@ BRANCH:
 	BNE  +		;actual operand is in following byte
 	INC  IP+1
 +	LDA  STATUS	;Holds Register#+Carry*$80
-	ASL			;Carry flag -> Carry, Prior Reg in A
 	TAX
-	JMP (VBR)	;Indexed jump to Branch OPS
+	LSR			;Carry flag -> Carry, Prior Reg # in A
+	BCC +
+	DEX			;Clean carry from index
++	JMP (VBR)	;Indexed jump to Branch OPS
 
 ; Branch on condition codes in front of NEXTOP and BR so they
 ; can branch either way
@@ -256,7 +263,7 @@ NEXTOP:
 	BNE  +		; ++IP
 	INC IP+1
 NEXTOP1:
-+	LDY #0
++	LDY #0		; Note: Y=0 when JMP (VOP)
 	LDA (IP),Y		; if([(++IP)]&&F0h)
 	BMI +
 	CMP #$10
@@ -305,31 +312,21 @@ ADD:	STY STATUS		; ADD R0,Rn
 	ADC REG+1,X
 	STA REG+1
 	BCC NEXTOP
-ADD1:
-	LDA STATUS
-	ORA #$80
-	STA STATUS
+	INC STATUS
 	BCS NEXTOP
 
-SUB:	TXA
-	TAY
-	LDX #0		; SUB R0,Rn
-SUB1:
-	STX STATUS		; Carry will be ORed in
+CPR:	LDY #(2*13)	; Comparison destination is R13
+SUB:	STY STATUS		; Carry will be INC'd in
 	SEC
 	LDA REG
-	SBC REG,Y
-	STA REG,X
+	SBC REG,X
+	STA REG,Y
 	LDA REG+1
-	SBC REG+1,Y
-	STA REG+1,X
+	SBC REG+1,X
+	STA REG+1,Y
 	BCC NEXTOP
-	BCS ADD1		; Share Carry Set
-
-CPR:	TXA
-	TAY
-	LDX #13
-	BNE SUB1
+	INC STATUS
+	BCS NEXTOP
 
 LDI:
 	STY REG+1

@@ -33,9 +33,10 @@
 ; direct add of up to +127/-128.
 
 ; The third NUL op code is implemented as a CALL operation,
-; which uses the address pointed to by register 11 as 
-; the call vector. The operand is the offset for a branch
-; on returning from the routine. 
+; which uses the address pointed to by register 10 ($xA) as 
+; the cAll vector (it can't be register 12 ($xC), that's the
+; subroutine call stack address). The operand is the offset
+; for a branch on returning from the routine. 
 
 ; You may report all other discrepencies between the
 ; execution semantics of this Virtual Machine and Steve
@@ -52,9 +53,9 @@
 ; Version 0.1.0 Pre-Release Code
 
 REG		= $2		; R0
-CALLV		= REG+22	; R11
+CALLV		= REG+20	; R10
 STACK		= REG+24	; R12
-STATUS	= REG+29	; HIGH Byte of R14
+STATUS	= REG+28	; HIGH Byte of R14
 IP		= REG+30	; R15
 
 REGA	= IP+2
@@ -315,7 +316,8 @@ ADD:	STZ STATUS
 	LDA REG+1
 	ADC REG+1,X
 	STA REG+1
-ADD1:	ROL STATUS
+ADD1:	BCC NEXTOP
+	INC STATUS
 	BRA NEXTOP
 
 LD:	TAY
@@ -366,9 +368,7 @@ INRX:
 
 SUB:	LDX #0		; SUB R0,Rn
 CPR:	TAY			; CPR opcode = R13 index
-	TXA
-	LSR
-	STA STATUS		; Carry will be shifted in
+	STX STATUS		; Carry will be incremented in
 	SEC
 	LDA REG
 	SBC REG,Y
@@ -376,7 +376,7 @@ CPR:	TAY			; CPR opcode = R13 index
 	LDA REG+1
 	SBC REG+1,Y
 	STA REG+1,X
-	BRA ADD1			; Share ADD exit
+	BRA ADD1		; Share ADD exit
 
 ST:	TAX
 	LDY #0
