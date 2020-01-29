@@ -1,7 +1,7 @@
-!to "swtr16.bin", cbm
+!to "swcx16.bin", cbm
 !cpu 65c02
 ;--------1--------2--------3--------4--------5--------6---
-; Sweeter16: A 65c02 Implmentation of a Virtual Machine
+; Sweet16c: A 65c02 Implmentation of a Virtual Machine
 ; for Executing Code written for Steve Wozniak's SWEET16
 ; Virtual Machine for the 6502.
 
@@ -25,7 +25,7 @@
 
 ; NOTE TWO INTENTIONAL EXTENSIONS.
 
-; Since Swift16 is not restricted to op codes residing in
+; Since Sweet16c is not restricted to op codes residing in
 ; a single 256 byte page, two of the three NUL op codes in
 ; SWEET16 are implemented as relative offset adds for the
 ; stack register and the main accumtlator (R0). If the
@@ -48,43 +48,39 @@
 ; table, which on its own is over half the size of 
 ; Steve Wozniak's entire implementation.
 
-; Version 0.0.1 Untested Code
+; Version 0.1.0 Pre-Release Code
 
 REG		= $2		; R0
-CALLV		= $18		; R11
-STACK		= $1A		; R12
-STATUS	= $1E		; LOW Byte of R14
-IP		= $20		; R15
+CALLV		= REG+22	; R11
+STACK		= REG+24	; R12
+STATUS	= REG+28	; LOW Byte of R14
+IP		= REG+30	; R15
 
-* = $CC00	; assemble to C64 Golden RAM for testing
+REGA	= IP+2
+REGX = REGA+1
+REGY = REGX+1
+REGP = REGY+1
+
+; For "Sweet64" NMOS version
+; VBR = REGP+1
+; VOP = VBR+2
+
+; * = $CC00	; assemble to C64 Golden RAM for testing
 		; This would be a VICE emulation of a 65C816
 		; equipped C64 in 65C02 emulation mode.
 
-; Save/Restore A/X/Y/P
-; REGA	= $CEFF
-; REGX	= $CEFE
-; REGY = $CEFD
-; REGP = $CEFC 
+* = $04000	; assemble to CX16 Golden RAM for testing
 
-; * = $04000	; assemble to CX16 Golden RAM for testing
-; Save/Restore A/X/Y/P
-; REGA	= $06EF
-; REGX	= $06EE
-; REGY 	= $06ED
-; REGP 	= $06EC 
-
-
-SWEETER16:
+SWEET16C:
 	JSR PUTSTATE
 	PLA
 	STA IP		;(IP) uses 6502 Return Address
 	PLA 			;6502 RtnAdd = Actual-1
 	STA IP+1
 	JMP NEXTOP
-REGA:	!byte 0
-REGX:	!byte 0
-REGY:	!byte 0
-REGP:	!byte 0
+; PADDING
+	!byte 0,0,0,0
+
 ;	TO_OPs table.
 ;	Y index of $00-$0F is not a main op, so this
 ;	table can omit the first two rows
@@ -303,7 +299,7 @@ NEXTOP1:
 	BIT #$F0
 	BEQ BRANCH
 	TAY			;	{[(++IP)]&&F0h/8 -> OP index}
-	LDX SWEETER16,Y	; Tabled [AND #$F0, /8]
+	LDX SWEET16C,Y	; Tabled [AND #$F0, /8]
 	AND #$0F		; *2 = Reg if OP, BROP if BROP
 	ASL
 	STA STATUS		; This is the register index operand
@@ -319,7 +315,8 @@ ADD:	STZ STATUS
 	LDA REG+1
 	ADC REG+1,X
 	STA REG+1
-ADD1:	ROL STATUS
+ADD1:	BCC NEXTOP
+	INC STATUS
 	BRA NEXTOP
 
 LD:	TAY
@@ -387,9 +384,7 @@ POPI:
 
 SUB:	LDX #0		; SUB R0,Rn
 CPR:	TAY			; CPR opcode = R13 index
-	TXA
-	LSR
-	STA STATUS		; Carry will be shifted in
+	STX STATUS		; Carry will be incremented in
 	SEC
 	LDA REG
 	SBC REG,Y
@@ -492,6 +487,8 @@ BK:	BRK
 RTN:	JSR GETSTATE
 	JMP  (IP)	;Go Back to 65C02 code
 
-!source "sweeter16_code.asm"
+SWEETVM = SWEET16C
+
+!source "sweet16vm_code.asm"
 !eof
 :

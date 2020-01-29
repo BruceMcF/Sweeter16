@@ -1,7 +1,7 @@
-!to "swtr16p2.bin", cbm
+!to "sw16c.bin", cbm
 !cpu 65c02
 ;--------1--------2--------3--------4--------5--------6---
-; Sweeter16: A 65c02 Implmentation of a Virtual Machine
+; Sweet16c: A 65c02 Implmentation of a Virtual Machine
 ; for Executing Code written for Steve Wozniak's SWEET16
 ; Virtual Machine for the 6502.
 
@@ -25,7 +25,7 @@
 
 ; NOTE TWO INTENTIONAL EXTENSIONS.
 
-; Since Swift16 is not restricted to op codes residing in
+; Since Sweet16c is not restricted to op codes residing in
 ; a single 256 byte page, two of the three NUL op codes in
 ; SWEET16 are implemented as relative offset adds for the
 ; stack register and the main accumtlator (R0). If the
@@ -33,9 +33,10 @@
 ; direct add of up to +127/-128.
 
 ; The third NUL op code is implemented as a CALL operation,
-; which uses the address pointed to by register 11 as 
-; the call vector. The operand is the offset for a branch
-; on returning from the routine. 
+; which uses the address pointed to by register 10 ($xA) as 
+; the cAll vector (it can't be register 12 ($xC), that's the
+; subroutine call stack address). The operand is the offset
+; for a branch on returning from the routine. 
 
 ; You may report all other discrepencies between the
 ; execution semantics of this Virtual Machine and Steve
@@ -43,44 +44,77 @@
 
 ; Do NOT report as a bug that this is a memory hog
 ; compared to Steve Wozniak's implementation. The effort 
-; is to run faster on a 65C02 system. While some 
-; crunching via "BRA" is done, heavy crunching via 
-; subroutines of 8byte or shorter operations is avoided.
+; is to run faster on a 65C02 system. This particular 
+; version implements one parsing functions using a page 
+; table, which on its own is over half the size of 
+; Steve Wozniak's entire implementation.
 
-; This "2P" version, for "Two Page", implements its parsing
-; with shifts, to be smaller, though slower, than the 
-; version that has one parsing function using a page 
-; table (which on its own is over half the size of 
-; Steve Wozniak's entire implementation).
-
-; Version 0.0.2 Partly Untested Code
+; Version 0.1.0 Pre-Release Code
 
 REG		= $2		; R0
-CALLV		= REG+22	; R11
+CALLV		= REG+20	; R10
 STACK		= REG+24	; R12
-STATUS	= REG+29	; HIGH Byte of R14
+STATUS	= REG+28	; LOW Byte of R14
 IP		= REG+30	; R15
 
-; Save/Restore A/X/Y/P
-REGA = IP+2
+REGA	= IP+2
 REGX = REGA+1
 REGY = REGX+1
 REGP = REGY+1
 
+; For "Sweet64" NMOS version
+; VBR = REGP+1
+; VOP = VBR+2
 
 * = $CC00	; assemble to C64 Golden RAM for testing
-		; This is VICE emulation of a 65C816
-		; (SuperCPU) C64 in 65C02 emulation mode.
+		; This would be a VICE emulation of a 65C816
+		; equipped C64 in 65C02 emulation mode.
 
 ; * = $04000	; assemble to CX16 Golden RAM for testing
 
-SWEETER16:
+SWEET16C:
 	JSR PUTSTATE
 	PLA
 	STA IP		;(IP) uses 6502 Return Address
 	PLA 			;6502 RtnAdd = Actual-1
 	STA IP+1
 	JMP NEXTOP
+; PADDING
+	!byte 0,0,0,0
+
+;	TO_OPs table.
+;	Y index of $00-$0F is not a main op, so this
+;	table can omit the first two rows
+	!byte		$02,$02,$02,$02,$02,$02,$02,$02
+	!byte		$02,$02,$02,$02,$02,$02,$02,$02
+	!byte		$04,$04,$04,$04,$04,$04,$04,$04
+	!byte		$04,$04,$04,$04,$04,$04,$04,$04
+	!byte		$06,$06,$06,$06,$06,$06,$06,$06
+	!byte		$06,$06,$06,$06,$06,$06,$06,$06
+	!byte		$08,$08,$08,$08,$08,$08,$08,$08
+	!byte		$08,$08,$08,$08,$08,$08,$08,$08
+	!byte		$0A,$0A,$0A,$0A,$0A,$0A,$0A,$0A
+	!byte		$0A,$0A,$0A,$0A,$0A,$0A,$0A,$0A
+	!byte		$0C,$0C,$0C,$0C,$0C,$0C,$0C,$0C
+	!byte		$0C,$0C,$0C,$0C,$0C,$0C,$0C,$0C
+	!byte		$0E,$0E,$0E,$0E,$0E,$0E,$0E,$0E
+	!byte		$0E,$0E,$0E,$0E,$0E,$0E,$0E,$0E
+	!byte		$10,$10,$10,$10,$10,$10,$10,$10
+	!byte		$10,$10,$10,$10,$10,$10,$10,$10
+	!byte		$12,$12,$12,$12,$12,$12,$12,$12
+	!byte		$12,$12,$12,$12,$12,$12,$12,$12
+	!byte		$14,$14,$14,$14,$14,$14,$14,$14
+	!byte		$14,$14,$14,$14,$14,$14,$14,$14
+	!byte		$16,$16,$16,$16,$16,$16,$16,$16
+	!byte		$16,$16,$16,$16,$16,$16,$16,$16
+	!byte		$18,$18,$18,$18,$18,$18,$18,$18
+	!byte		$18,$18,$18,$18,$18,$18,$18,$18
+	!byte		$1A,$1A,$1A,$1A,$1A,$1A,$1A,$1A
+	!byte		$1A,$1A,$1A,$1A,$1A,$1A,$1A,$1A
+	!byte		$1C,$1C,$1C,$1C,$1C,$1C,$1C,$1C
+	!byte		$1C,$1C,$1C,$1C,$1C,$1C,$1C,$1C
+	!byte		$1E,$1E,$1E,$1E,$1E,$1E,$1E,$1E
+	!byte		$1E,$1E,$1E,$1E,$1E,$1E,$1E,$1E
 
 BROPS:
 	; I use Wozniak's pseudo-ops
@@ -145,10 +179,17 @@ GETSTATE:
 	PLP
 	RTS
 
-; These five Branch ops inherit their branch 
+CALL:	; Pointer to 65C02 machine code is
+	; in R11. Branch via OP to support
+	; embedded data
+	JSR +
+	BRA BR
++	JMP (CALLV)
+
+; These next Branch four ops inherit their branch 
 ; to NEXTOP from the branch op that they jump into
 ; putting them here allows BRANCH to be close enough
-; to NEXTOP for NEXTOP's BEQ BRANCH to work.
+; to NEXTOP for the BEQ BRANCH to work.
 
 ; BM1 and BNM1 uses the BZ and BNZ logic
 ; compared to #$FF rather than #0
@@ -162,17 +203,6 @@ BNM1	ASL
 	LDA #$FF
 	BRA BNAX
 
-; Call ends by branching to step over any embedded
-; data for the use of the called routine
-
-CALL:	; Pointer to 65C02 machine code is
-	; in R11. Branch via OP to support
-	; embedded data
-	JSR +
-	BRA BR
-+	JMP (CALLV)
-
-
 ; Adjust Stack and R0 uses same offset logic
 ; As Branch, just different registers
 
@@ -183,7 +213,6 @@ ADJS:	LDX #(STACK-REG)
 	BRA OFFSET
 
 BRANCH:
-	TYA			;Only here if Y=$0x
 	ASL			;A is actually the OP index
 	TAX			
 	INC IP		;Now increment IP, since
@@ -238,18 +267,16 @@ BNAX:
 	BEQ NEXTOP
 	BNE BR
 
-; Branch to Subroutine falls through to BR
-; BR falls through to NEXTOP
-
 BS:	LDA IP
 	STA (STACK)
-	INC STACK
-	BNE +
-	INC STACK+1
 	LDA IP+1
-	STA (STACK)
-	INC STACK
-	BNE BR
+	LDY #1
+	STA (STACK),Y
+	TYA
+	SEC
+	ADC STACK
+	STA STACK
+	BCC BR
 	INC STACK+1
 BR:
 	LDX #(IP-REG)	; Index to IP
@@ -270,43 +297,15 @@ NEXTOP:
 	INC IP+1
 NEXTOP1:
 +	LDA (IP)		; if([(++IP)]&&F0h)
-	TAY
-	AND #$F0
+	BIT #$F0
 	BEQ BRANCH
-	LSR
-	LSR
-	LSR
-	TAX
-	TYA
+	TAY			;	{[(++IP)]&&F0h/8 -> OP index}
+	LDX SWEET16C,Y	; Tabled [AND #$F0, /8]
 	AND #$0F		; *2 = Reg if OP, BROP if BROP
 	ASL
 	STA STATUS		; This is the register index operand
 				; Carry clear for each main OP
 	JMP (OPS-2,X)	; Minimum X=2, since X=0 => BRANCH
-
-; These two don't have any ops branching into
-; them to share their finishing semantics.
-
-POPI:
-	TAX
-	LDA REG,X		; LD R0,(--Rn)
-	BNE +
-	DEC REG+1,X
-+	DEC REG,X
-	LDA (REG,X)
-	STA REG
-	STZ REG+1
-	BRA NEXTOP
-
-DCR:	
-	TAX			; Rn<-Rn-1
-	LDA REG,X
-	BNE +
-	DEC REG+1,X
-+	BRA NEXTOP	
-
-; These four have operations branching in to
-; share their finishing semantics
 
 ADD:	STZ STATUS
 	TAX			; ADD R0,Rn
@@ -317,7 +316,8 @@ ADD:	STZ STATUS
 	LDA REG+1
 	ADC REG+1,X
 	STA REG+1
-ADD1:	ROL STATUS
+ADD1:	BCC NEXTOP
+	INC STATUS
 	BRA NEXTOP
 
 LD:	TAY
@@ -340,6 +340,13 @@ STPI1:
 	STZ STATUS		; Branch conditions reflects R0
 	BRA NEXTOP
 
+DCR:	TAX			; --Rn
+	LDA REG,X
+	BNE +
+	DEC REG+1,X
++	DEC REG,X
+	BRA NEXTOP
+
 LDI:				; LD R0,(Rn++) # Bytey
 	TAX
 LDI1:
@@ -354,6 +361,16 @@ INRX:
 	INC REG+1,X
 +	BRA NEXTOP
 
+POPI:
+	TAX
+	LDA REG,X		; LD R0,(--Rn)
+	BNE +
+	DEC REG+1,X
++	DEC REG,X
+	LDA (REG,X)
+	STA REG
+	STZ REG+1
+	BRA NEXTOP
 
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ; ~~ * NEXTOP must be no more than ~~~
@@ -368,9 +385,7 @@ INRX:
 
 SUB:	LDX #0		; SUB R0,Rn
 CPR:	TAY			; CPR opcode = R13 index
-	TXA
-	LSR
-	STA STATUS		; Carry will be shifted in
+	STX STATUS		; Carry will be incremented in
 	SEC
 	LDA REG
 	SBC REG,Y
@@ -473,6 +488,8 @@ BK:	BRK
 RTN:	JSR GETSTATE
 	JMP  (IP)	;Go Back to 65C02 code
 
-!source "sweeter16_code.asm"
+SWEETVM = SWEET16C
+
+!source "sweet16vm_code.asm"
 !eof
 :
