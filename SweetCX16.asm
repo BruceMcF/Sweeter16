@@ -1,7 +1,7 @@
 !to "swcx16.bin", cbm
 !cpu 65c02
 ;--------1--------2--------3--------4--------5--------6---
-; SweetCX16: A 65c02 Implmentation of a Virtual Machine
+; Sweet16c: A 65c02 Implmentation of a Virtual Machine
 ; for Executing Code written for Steve Wozniak's SWEET16
 ; Virtual Machine for the 6502.
 
@@ -25,7 +25,7 @@
 
 ; NOTE TWO INTENTIONAL EXTENSIONS.
 
-; Since SweetCX16 is not restricted to op codes residing in
+; Since Sweet16c is not restricted to op codes residing in
 ; a single 256 byte page, two of the three NUL op codes in
 ; SWEET16 are implemented as relative offset adds for the
 ; stack register and the main accumtlator (R0). If the
@@ -53,7 +53,7 @@
 REG		= $2		; R0
 CALLV		= REG+22	; R11
 STACK		= REG+24	; R12
-STATUS	= REG+29	; HIGH Byte of R14
+STATUS	= REG+28	; LOW Byte of R14
 IP		= REG+30	; R15
 
 REGA	= IP+2
@@ -65,14 +65,13 @@ REGP = REGY+1
 ; VBR = REGP+1
 ; VOP = VBR+2
 
-; * = $CC00
-		; assemble to C64 Golden RAM for testing
+; * = $CC00	; assemble to C64 Golden RAM for testing
 		; This would be a VICE emulation of a 65C816
 		; equipped C64 in 65C02 emulation mode.
 
 * = $04000	; assemble to CX16 Golden RAM for testing
 
-SWEETCX16:
+SWEET16C:
 	JSR PUTSTATE
 	PLA
 	STA IP		;(IP) uses 6502 Return Address
@@ -300,7 +299,7 @@ NEXTOP1:
 	BIT #$F0
 	BEQ BRANCH
 	TAY			;	{[(++IP)]&&F0h/8 -> OP index}
-	LDX SWEETCX16,Y	; Tabled [AND #$F0, /8]
+	LDX SWEET16C,Y	; Tabled [AND #$F0, /8]
 	AND #$0F		; *2 = Reg if OP, BROP if BROP
 	ASL
 	STA STATUS		; This is the register index operand
@@ -316,7 +315,8 @@ ADD:	STZ STATUS
 	LDA REG+1
 	ADC REG+1,X
 	STA REG+1
-ADD1:	ROL STATUS
+ADD1:	BCC NEXTOP
+	INC STATUS
 	BRA NEXTOP
 
 LD:	TAY
@@ -384,9 +384,7 @@ POPI:
 
 SUB:	LDX #0		; SUB R0,Rn
 CPR:	TAY			; CPR opcode = R13 index
-	TXA
-	LSR
-	STA STATUS		; Carry will be shifted in
+	STX STATUS		; Carry will be incremented in
 	SEC
 	LDA REG
 	SBC REG,Y
@@ -489,7 +487,7 @@ BK:	BRK
 RTN:	JSR GETSTATE
 	JMP  (IP)	;Go Back to 65C02 code
 
-SWEETVM = SWEETCX16
+SWEETVM = SWEET16C
 
 !source "sweet16vm_code.asm"
 !eof
