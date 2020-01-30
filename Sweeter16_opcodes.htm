@@ -1,0 +1,92 @@
+<h1>SWEET16 OP CODE SUMMARY</h1>
+<h3>(per Woniak 1977, plus 3 Sweeter16 extensions)</h3>
+
+
+<H2>Notes On Registers</h2>
+<ul>
+<li/><p/>"n" can be any hexidecimal digit from 0 to F, representing the 16 registers R0 to R15.
+<li/><p/>R0 ($0) is the accumulator.
+<li/><p/>Register 15 ($F) is the Instruction Pointer. Setting the
+ instruction pointert is a long absolute jump if your target
+ is outside of the range of a branch instruction.
+<li/><p/>Register 14 ($E) is the status register. This is in the low
+ byte of the register rather than the high byte as in Woz's
+ original implementation, for ease of implementation of the
+ 65816 version. Every register operation sets the status
+ register, clearing the carry unless the operation itself 
+ generates one. Every non-register operation leaves the 
+ status register and carry status untouched.
+<li/><p/>Register 13 ($D) is the target register for the comparison
+ operation. The comparison result will remain available until
+ the next comparison, unless you explicitly store to R13, but
+ the carry is placed in the status register (cf. R14 above).
+<li/><p/>Register 12 ($C) is the address register for the subroutine call
+ return address stack. Setting up Register 12 is not automatic:
+ it must be set up before performing a "BS rel" operation.
+<li/><p/>Register 10 ($A) is the 65C02 subroutine address vector for
+ the CALLV operation. This branches according to the relative
+ offset, to allow data for the routine to be embedded in the
+ Sweet16c code.
+</ul>
+
+<h2>Register Ops</h2>
+<table>
+<tr><th>Code</th><th>Instruction</th><th>Action</th>
+<tr><td>1n</td><td>SET Rn Constant</td><td>(set)</td></tr>
+<tr><td>2n</td><td>LD Rn</td><td>(Load)</td></tr>
+<tr><td>3n</td><td>ST Rn</td><td>(Store)</td></tr>
+<tr><td>4n</td><td>LD @Rn</td><td>(Load indirect)</td></tr>
+<tr><td>5n</td><td>ST @Rn</td><td>(Store indirect)</td></tr>
+<tr><td>6n</td><td>LDD @Rn</td><td>(Load double indirect)</td></tr>
+<tr><td>7n</td><td>STD @Rn</td><td>(Store double indirect)</td></tr>
+<tr><td>8n</td><td>POP @Rn</td><td>(Pop indirect)</td></tr>
+<tr><td>9n</td><td>STP @Rn</td><td>(Store Pop indirect)</td></tr>
+<tr><td>An</td><td>ADD Rn</td><td>(Add)</td></tr>
+<tr><td>Bn</td><td>SUB Rn</td><td>(Subtract)</td></tr>
+<tr><td>Cn</td><td>POPD @Rn</td><td>(Pop double indirect)</td></tr>
+<tr><td>Dn</td><td>CPR Rn</td><td>(Compare)</td></tr>
+<tr><td>En</td><td>INR Rn</td><td>(Increment)</td></tr>
+<tr><td>Fn</td><td>DCR Rn</td><td>(Decrement)</td></tr>
+</table>
+
+<h2>Nonregister Ops</h2>
+<table>		
+<tr><th>Code</th><th>Instruction</th><th>Action</th>
+<tr><td>0</td><td>RTN</td><td>(Return to 6502 mode)</td></tr>
+<tr><td>1</td><td>BR ea</td><td>(Branch always)</td></tr>
+<tr><td>2</td><td>BNC ea</td><td>(Branch if No Carry)</td></tr>
+<tr><td>3</td><td>BC ea</td><td>(Branch if Carry)</td></tr>
+<tr><td>4</td><td>BP ea</td><td>(Branch if Plus)</td></tr>
+<tr><td>5</td><td>BM ea</td><td>(Branch if Minus)</td></tr>
+<tr><td>6</td><td>BZ ea</td><td>(Branch if Zero)</td></tr>
+<tr><td>7</td><td>BNZ ea</td><td>(Branch if NonZero)</td></tr>
+<tr><td>8</td><td>BM1 ea</td><td>(Branch if Minus 1)</td></tr>
+<tr><td>9</td><td>BNM1 ea</td><td>(Branch if Not Minus 1)</td></tr>
+<tr><td>0A</td><td>BK ea</td><td>(Break)</td></tr>
+<tr><td>0B</td><td>RS</td><td>(Return from Subroutine)</td></tr>
+<tr><td>0C</td><td>BS ea</td><td>(Branch to Subroutine)</td></tr>
+<tr><td>0D</td><td>CALL ea</td><td>(Call external subroutine)</td></tr>
+<tr><td>0E</td><td>ADJ0 ea</td><td>(Adjust R0)</td></tr>
+<tr><td>0F</td><td>ADJS ea</td><td>(Adjust Stack index)</td></tr>
+</table>
+
+<h2>Operational summary of register ops</h2>
+<table>
+<tr><th>Code</th><th>Instruction</th><th>Action</th>
+<tr><td>1n</td><td>SET Rn Word</td><td>LDD Rn,Word</td></tr>
+<tr><td>2n</td><td>LD Rn</td><td>LDD R0,Rn</td></tr>
+<tr><td>3n</td><td>ST Rn</td><td>LDD Rn,R0</td></tr>
+<tr><td>4n</td><td>LD @Rn</td><td>LD R0,(Rn++)</td></tr>
+<tr><td>5n</td><td>ST @Rn</td><td>LD (Rn++),R0</td></tr>
+<tr><td>6n</td><td>LDD @Rn</td><td>LDD R0,(Rn++)</td></tr>
+<tr><td>7n</td><td>STD @Rn</td><td>LDD (Rn++),R0</td></tr>
+<tr><td>8n</td><td>POP @Rn</td><td>LD R0,(--Rn)</td></tr>
+<tr><td>9n</td><td>STP @Rn</td><td>LD (--Rn),R0</td></tr>
+<tr><td>An</td><td>ADD Rn</td><td>LDD C:R0,R0+Rn</td></tr>
+<tr><td>Bn</td><td>SUB Rn</td><td>LDD (-C):R0,R0-Rn</td></tr>
+<tr><td>Cn</td><td>POPD @Rn</td><td>LD R0,(--Rn)</td></tr>
+<tr><td>Dn</td><td>CPR Rn</td><td>LDD (-C):R13,R0-Rn</td></tr>
+<tr><td>En</td><td>INR Rn</td><td>LDD Rn,Rn+1</td></tr>
+<tr><td>Fn</td><td>DCR Rn</td><td>LDD Rn,Rn-1</td></tr>
+</table>
+<p/>Note: "LD Target, Source", 1 byte; "LDD Target, Source", 2 bytes.

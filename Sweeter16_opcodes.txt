@@ -1,0 +1,82 @@
+SWEET16 OP CODE SUMMARY
+(per Wozniak 1977, plus 3 Sweeter16 extensions)
+
+Notes On Registers:
++ "n" can be any hexidecimal digit from 0 to F, representing
+ the 16 registers R0 to R15.
++ R0 ($0) is the accumulator.
++ Register 15 ($F) is the Instruction Pointer. Setting the
+ instruction pointert is a long absolute jump if your target
+ is outside of the range of a branch instruction.
++ Register 14 ($E) is the status register. This is in the low
+ byte of the register rather than the high byte as in Woz's
+ original implementation, for ease of implementation of the
+ 65816 version. Every register operation sets the status
+ register, clearing the carry unless the operation itself 
+ generates one. Every non-register operation leaves the 
+ status register and carry status untouched.
++ Register 13 ($D) is the target register for the comparison
+ operation. The comparison result will remain available until
+ the next comparison, unless you explicitly store to R13, but
+ the carry is placed in the status register (cf. R14 above).
++ Register 12 ($C) is the address register for the subroutine
+ call return address stack. Setting up Register 12 is not
+ automatic: it must be set up before performing a "BS rel"
+ operation.
++ Register 10 ($A) is the 65C02 subroutine address vector for
+ the CALLV operation. This branches according to the relative
+ offset, to allow data for the routine to be embedded in the
+ Sweet16c code.
+
+
+1n    SET Rn Word  (set)
+2n    LD Rn        (Load)
+3n    ST Rn        (Store)
+4n    LD @Rn       (Load indirect)
+5n    ST @Rn       (Store indirect)
+6n    LDD @Rn      (Load double indirect)
+7n    STD @Rn      (Store double indirect)
+8n    POP @Rn      (Pp indirect)
+9n    STP @Rn      (Store Pop indirect)
+An    ADD Rn       (Add)
+Bn    SUB Rn       (Subtract)
+Cn    POPD @Rn     (Pop double indirect)
+Dn    CPR Rn       (Compare)
+En    INR Rn       (Increment)
+Fn    DCR Rn       (Decrement)
+
+Nonregister Ops        
+0    RTN       (Return to 6502 mode)
+1    BR ea     (Branch always)
+2    BNC ea    (Branch if No Carry)
+3    BC ea     (Branch if Carry)
+4    BP ea     (Branch if Plus)
+5    BM ea     (Branch if Minus)
+6    BZ ea     (Branch if Zero)
+7    BNZ ea    (Branch if NonZero)
+8    BM1 ea    (Branch if Minus 1)
+9    BNM1 ea   (Branch if Not Minus 1)
+0A   BK ea     (Break)
+0B   RS        (Return from Subroutine)
+0C   BS ea     (Branch to Subroutine)
+0D   CALL ea   (Call external subroutine)
+0E   ADJ0 ea   (Adjust R0)
+0F   ADJS ea   (Adjust Stack index)
+
+1n    SET Rn Word  LDD Rn,Word
+2n    LD Rn        LDD R0,Rn
+3n    ST Rn        LDD Rn,R0
+4n    LD @Rn       LD R0,(Rn++)
+5n    ST @Rn       LD (Rn++),R0
+6n    LDD @Rn      LDD R0,(Rn++)
+7n    STD @Rn      LDD (Rn++),R0
+8n    POP @Rn      LD R0,(--Rn)
+9n    STP @Rn      LD (--Rn),R0
+An    ADD Rn       LDD C:R0,R0+Rn
+Bn    SUB Rn       LDD (-C):R0,R0-Rn
+Cn    POPD @Rn     LD R0,(--Rn)
+Dn    CPR Rn       LDD (-C):R13,R0-Rn
+En    INR Rn       LDD Rn,Rn+1
+Fn    DCR Rn       LDD Rn,Rn-1
+  "LD Target, Source", 1 byte
+  "LDD Target, Source", 2 bytes
