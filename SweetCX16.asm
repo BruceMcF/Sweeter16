@@ -69,7 +69,7 @@ REGP = REGY+1
 		; This would be a VICE emulation of a 65C816
 		; equipped C64 in 65C02 emulation mode.
 
-* = $04000	; assemble to CX16 Golden RAM for testing
+* = $0400	; assemble to CX16 Golden RAM for testing
 
 SWEET16C:
 	JSR PUTSTATE
